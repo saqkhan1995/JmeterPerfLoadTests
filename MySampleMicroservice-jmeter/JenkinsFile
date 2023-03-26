@@ -1,0 +1,49 @@
+pipeline{
+    agent { label 'mvn-j11'}
+    stages {
+        stage ('Performance Test') {
+            steps {
+                script {
+                    sh 'mvn clean install'
+                    publishHTML([
+                        allowMissing: false,
+                        keepAll: false,
+                        alwaysLinkToLastBuild: false,
+                        reportDir: 'target/jmeter/reports/MyPerformanceTests/',
+                        reportFiles: 'index.html',
+                        reportName: 'HTML Report',
+                        reportTitles: 'Jmeter report'
+                        ])
+                }
+            }
+        }
+
+        stage('Archive results') {
+            steps {
+                script {
+                    if (varExists({archive}) && archive) {
+                        println("Archive Requested, Archiving")
+                        archiveArtifacts(
+                            artifacts: 'target/jmeter/reports/MyPerformanceTests/**/*.*',
+                            allowEmptyArchive: false,
+                            onlyIfSuccessful: false
+                        )
+                        currentBuild.setKeepLog(true)
+                        currentBuild.description = "#${BUILD_NUMBER} (archived)"
+                    } else {
+                        println("Archive not requested, not archiving")
+                    }
+                }
+            }
+        }
+    }
+}
+
+def varExists(v) {
+    try {
+        v()
+        return true
+    } catch (exc) {
+        return false
+    }
+}
